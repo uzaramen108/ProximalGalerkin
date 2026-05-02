@@ -39,7 +39,7 @@ def generate_disk(filename: Path, res: float, order: int = 1, refinement_level: 
     gmsh.finalize()
     out_name = filename.with_stem(f"{filename.stem}_{refinement_level}").with_suffix(".xdmf")
     filename.parent.mkdir(exist_ok=True, parents=True)
-    with dolfinx.io.XDMFFile(mesh_comm, out_name, "w") as xdmf:
+    with dolfinx.io.XDMFFile(mesh_comm, str(out_name), "w") as xdmf:
         xdmf.write_mesh(msh)
 
 

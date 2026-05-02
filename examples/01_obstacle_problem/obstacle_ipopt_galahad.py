@@ -63,18 +63,37 @@ def setup_problem(
     bcs = [dolfinx.fem.dirichletbc(dolfinx.default_scalar_type(0.0), boundary_dofs, Vh)]
 
     def psi(x):
-        r = np.sqrt(x[0] ** 2 + x[1] ** 2)
-        r0 = 0.5
-        beta = 0.9
-        b = r0 * beta
-        tmp = np.sqrt(r0**2 - b**2)
-        B = tmp + b * b / tmp
-        C = -b / tmp
-        cond_true = B + r * C
-        cond_false = np.sqrt(r0**2 - r**2)
-        true_indices = np.flatnonzero(r > b)
-        cond_false[true_indices] = cond_true[true_indices]
-        return cond_false
+        # 1. 배경은 막이 닿지 않도록 아주 깊은 곳(-10.0)으로 설정
+        phi_vals = np.full_like(x[0], -10.0) 
+        
+        # ─── 파라미터 설정 (입맛에 맞게 조절하세요) ───
+        R = 0.1        # 원관(파이프)의 반지름 (굵기)
+        L = 0.4       # 파이프 간의 간격 (격자의 촘촘함)
+        Z_top = -0.2   # 파이프 가장 윗면의 높이 (장애물 최대 높이)
+        Z_center = Z_top - R  # 파이프 중심축의 높이
+        # ──────────────────────────────────────────────
+        
+        # 2. 각 좌표에서 가장 가까운 파이프 중심선까지의 수직 거리 계산
+        # np.round(x / L) * L 은 가장 가까운 중심축(0, ±0.4, ±0.8...)의 좌표를 찾습니다.
+        dx = np.abs(x[0] - np.round(x[0] / L) * L) # y축 방향으로 뻗은 파이프들과의 거리
+        dy = np.abs(x[1] - np.round(x[1] / L) * L) # x축 방향으로 뻗은 파이프들과의 거리
+        
+        # 3. 파이프가 존재하는 영역 마스킹 (거리가 반지름 R 이하인 곳)
+        mask_y_pipe = dx <= R
+        mask_x_pipe = dy <= R
+        
+        # 4. 각 파이프의 둥근 곡면 높이 계산 (원방정식: z = z_center + sqrt(R^2 - d^2))
+        h_y_pipe = np.full_like(x[0], -10.0)
+        h_y_pipe[mask_y_pipe] = Z_center + np.sqrt(R**2 - dx[mask_y_pipe]**2)
+        
+        h_x_pipe = np.full_like(x[0], -10.0)
+        h_x_pipe[mask_x_pipe] = Z_center + np.sqrt(R**2 - dy[mask_x_pipe]**2)
+        
+        # 5. 가로 파이프와 세로 파이프 중 더 높은 값을 취함 (파이프들이 교차하는 형상 구현)
+        phi_vals = np.maximum(phi_vals, h_y_pipe)
+        phi_vals = np.maximum(phi_vals, h_x_pipe)
+        
+        return phi_vals
 
     lower_bound = dolfinx.fem.Function(Vh, name="lower_bound")
     upper_bound = dolfinx.fem.Function(Vh, name="upper_bound")
@@ -83,8 +102,20 @@ def setup_problem(
     dolfinx.fem.set_bc(upper_bound.x.array, bcs)
     dolfinx.fem.set_bc(lower_bound.x.array, bcs)
 
+    # ── ▼▼▼ 외력 f 설정 부분 수정 ▼▼▼ ──
+    def f_set(x):
+        r2 = x[0]**2 + x[1]**2
+        R_mesh = 1.0
+        f_max = -5.0  # 이전 비교군과 동일한 최대 하중
+        
+        # 포물선 프로파일 계산
+        f_vals = f_max * (1.0 - r2 / (R_mesh**2))
+        
+        # 안전장치: 가장자리에서 값이 양수가 되어 위로 당기는 현상 차단
+        return np.minimum(f_vals, 0.0)
+
     f = dolfinx.fem.Function(Vh)
-    f.x.array[:] = 0.0
+    f.interpolate(f_set)
     S = dolfinx.fem.assemble_matrix(dolfinx.fem.form(stiffness))
     M = dolfinx.fem.assemble_matrix(dolfinx.fem.form(mass))
 
