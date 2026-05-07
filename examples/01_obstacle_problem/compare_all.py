@@ -81,7 +81,7 @@ if __name__ == "__main__":
         args.infile,
         1,
         maximum_number_of_outer_loop_iterations=max_iter,
-        alpha_scheme="double_exponential",
+        alpha_scheme="double_exponential", # double_exponential에서 수정
         alpha_max=1e2,
         tol_exit=tol,
     )
@@ -102,7 +102,7 @@ if __name__ == "__main__":
         args.infile,
         2,
         maximum_number_of_outer_loop_iterations=max_iter,
-        alpha_scheme="geometric", # double_exponential에서 수정
+        alpha_scheme="double_exponential", # double_exponential에서 수정
         alpha_max=1e2,
         tol_exit=tol,
     )

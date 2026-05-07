@@ -49,8 +49,8 @@ def generate_pipe_net_mesh():
     gmsh.model.occ.synchronize()
 
     # 메쉬 해상도 설정
-    gmsh.option.setNumber("Mesh.CharacteristicLengthMin", 0.01)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 0.05)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthMin", 0.005)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 0.01)
 
     print("Generating 3D mesh for the pipe net...")
     gmsh.model.mesh.generate(3)

@@ -165,7 +165,7 @@ def solve_problem(
         "ksp_monitor": None,
         "snes_monitor": None,
         "snes_error_if_not_converged": True,
-        "snes_linesearch_type": "none",
+        "snes_linesearch_type": "bt",
         "snes_rtol": 1e-6,
         "snes_max_it": 100,
     }
@@ -175,13 +175,13 @@ def solve_problem(
 
     # observables
     energy_form = fem.form(0.5 * inner(grad(u), grad(u)) * dx - f * u * dx)
-    complementarity_form = fem.form((psi_k - psi) / alpha * u * dx)
-    feasibility_form = fem.form(conditional(lt(u, 0), -u, fem.Constant(msh, 0.0)) * dx)
+    complementarity_form = fem.form(((psi_k - psi) / alpha) * (u - phi) * dx)
+    feasibility_form = fem.form(conditional(lt(u, phi), phi - u, fem.Constant(msh, 0.0)) * dx)
     dual_feasibility_form = fem.form(
         conditional(lt(psi_k, psi), (psi - psi_k) / alpha, fem.Constant(msh, 0.0)) * dx
     )
     H1increment_form = fem.form(inner(grad(u - u_k), grad(u - u_k)) * dx + (u - u_k) ** 2 * dx)
-    L2increment_form = fem.form((exp(psi) - exp(psi_k)) ** 2 * dx)
+    L2increment_form = fem.form((psi - psi_k)**2 * dx)
 
     # Proximal point outer loop
     n = 0
